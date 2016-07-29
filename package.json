@@ -1,0 +1,30 @@
+{
+  "name": "nuclide-test-runner-mocha",
+  "version": "1.0.0",
+  "description": "Mocha test runner for Nuclide",
+  "main": "runner.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "engines": {
+    "atom": ">=1.0.0 <2.0.0"
+  },
+  "providedServices": {
+    "nuclide-test-runner.provider": {
+      "description": "Mocha Test Runner for Nuclide",
+      "versions": {
+        "0.0.0": "provideTestRunner"
+      }
+    }
+  },
+  "author": "",
+  "license": "MIT",
+  "standard": {
+    "globals": [
+      "atom"
+    ]
+  },
+  "dependencies": {
+    "mocha": "^2.5.3"
+  }
+}
