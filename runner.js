@@ -2,7 +2,6 @@
 
 /* @flow */
 
-// const path = require('path')
 const _atom = require('atom')
 const Mocha = require('mocha')
 
@@ -13,60 +12,46 @@ class TestRunner {
       reporter: 'json-stream'
     })
     this.mocha.addFile(testFile)
-    this.runId = 0
     this.args = [testFile]
   }
 
   run () {
-    this.emitter.emit('stderr', { runId: ++this.runId, data: `> mocha ${this.args.join(' ')}` })
+    this.runId = 0
+
+    this.emitter.emit('stderr', { runId: this.runId, data: `> mocha ${this.args.join(' ')}` })
     const runner = this.mocha.run()
 
     runner.on('pass', (event) => {
-      this._emitTestResult(event)
-      // this.emitter.emit('stdout', { runId: this.runId, data: Object.keys(event) })
+      this.emitter.emit('run-test', { testInfo: { name: event.title, durationSecs: event.duration, status: 1 } })
     })
 
-    // runner.on('fail', (event) => {
-    //   this.emitter.emit('stderr', { runId: this.runId, data: event })
-    // })
-    //
-    // runner.on('start', (event) => {
-    //   this.emitter.emit('stderr', { runId: this.runId, data: event })
-    // })
-    //
-    // runner.on('end', (event) => {
-    //   this.emitter.emit('stderr', { runId: this.runId, data: event })
-    // })
-    //
-    // runner.on('suite', (event) => {
-    //   this.emitter.emit('stderr', { runId: this.runId, data: event })
-    // })
-    //
-    // runner.on('pending', (event) => {
-    //   this.emitter.emit('stderr', { runId: this.runId, data: event })
-    // })
-  }
-
-  _emitTestResult (result) {
-    for (let x of Object.keys(result)) {
-      console.log(x, result[x])
-    }
-    this.emitter.emit('run-test', {
-      runId: this.runId,
-      testInfo: {
-        name: result.title
-        // durationSecs : (tr.endTime - tr.startTime) / 1000,
-        // endedTime    : tr.endTime,
-        // status       : statusNumFromString(tr.status),
-        // summary      : tr.summary || 'SUMMARY',
-        // test_json: {
-        //   className : tr.name,
-        //   name      : tr.name,
-        //   fileName  : tr.name,
-        //   id        : tr.name
-        // }
+    runner.on('fail', (event) => {
+      const durationSecs = event.duration / 1000
+      const status = event.timedOut ? 4 : 2
+      const test_json = {
+        className: 'n/a',
+        name: event.ctx.test.parent.title,
+        fileName: event.file,
+        id: 'n/a'
       }
+
+      this.emitter.emit('run-test', { testInfo: { name: event.title, durationSecs, summary: 'SUMMARY', status, test_json } })
     })
+
+    runner.on('test', (event) => {
+      ++this.runId
+    })
+
+    runner.on('suite', (event) => {
+      this.emitter.emit('start', { testInfo: { name: event.title } })
+    })
+
+    runner.on('end', (event) => {
+      // this.emitter.emit('summary', { testInfo: { test_json: { id: 0 },  } })
+      this.finallyFn(this.runId)
+    })
+
+    // pending
   }
 
   do (fn) {
@@ -82,7 +67,6 @@ class TestRunner {
   subscribe () {
     for (let event of ['summary', 'run-test', 'start', 'error', 'stdout', 'stderr']) {
       this.emitter.on(event, (m) => {
-        console.log('Emitting', m)
         m.kind = event
         this.doFn(m)
       })
@@ -92,18 +76,9 @@ class TestRunner {
     return this
   }
 
-  onDidStart (cb) {
-    console.log('did start')
-    this.emitter.on('did-start', cb)
-  }
-
-  onDidRunTest (cb) {
-    console.log('did run')
-    this.emitter.on('did-run-test', cb)
-  }
-
   unsubscribe () {
     this.emitter.dispose()
+    return this
   }
 
 }
